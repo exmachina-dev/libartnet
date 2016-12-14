@@ -25,7 +25,10 @@
 // order is important here for osx
 #include <sys/types.h>
 
-#if !defined(WIN32) && !defined(_MSC_VER)
+#if defined(TARGET_LPC176X)
+#include "UDPSocket.h"
+
+#elif !defined(WIN32) && !defined(_MSC_VER)
 #include <sys/select.h>
 #else
 #include <winsock2.h>
@@ -210,11 +213,7 @@ typedef void *artnet_node;
 /** A list of remote ArtNet nodes */
 typedef void *artnet_node_list;
 
-#if !defined(WIN32) && !defined(_MSC_VER)
-typedef int artnet_socket_t;
-#else
-typedef SOCKET artnet_socket_t;
-#endif
+typedef UDPSocket artnet_socket_t;
 
 // node control functions
 EXTERN artnet_node artnet_new(const char *ip, int verbose);

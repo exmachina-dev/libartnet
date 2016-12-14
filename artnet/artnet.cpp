@@ -77,11 +77,13 @@ int find_nodes_from_uni(node_list_t *nl, uint8_t uni, SI *ips, int size);
  */
 artnet_node artnet_new(const char *ip, int verbose) {
   node n;
+  UDPSocket _sock;
   int i;
 
-  n = malloc(sizeof(artnet_node_t));
+  n = (artnet_node_s *) malloc(sizeof(artnet_node_t));
 
   if (!n) {
+      printf("%d", sizeof(artnet_node_t));
     artnet_error("malloc failure");
     return NULL;
   }
@@ -103,7 +105,7 @@ artnet_node artnet_new(const char *ip, int verbose) {
   n->peering.peer = NULL;
   n->peering.master = TRUE;
 
-  n->sd = INVALID_SOCKET;
+  n->sd = _sock;
 
   if (artnet_net_init(n, ip)) {
     free(n);
@@ -114,7 +116,7 @@ artnet_node artnet_new(const char *ip, int verbose) {
   n->state.send_apr_on_change = FALSE;
   n->state.ar_count = 0;
   n->state.report_code = ARTNET_RCPOWEROK;
-  n->state.reply_addr.s_addr = 0;
+  memcpy(&(n->state.reply_addr), 0x0, NSAPI_IP_BYTES);
   n->state.mode = ARTNET_STANDBY;
 
   // set all ports to MERGE HTP mode and disable
@@ -642,7 +644,7 @@ int artnet_send_dmx(artnet_node vn,
   memcpy(&p.data.admx.data, data, length);
 
   // default to bcast
-  p.to.s_addr = n->state.bcast_addr.s_addr;
+  p.to = n->state.bcast_addr;
 
   if (n->state.bcast_limit == 0) {
     if ((ret = artnet_net_send(n, &p)))
@@ -650,7 +652,7 @@ int artnet_send_dmx(artnet_node vn,
   } else {
     int nodes;
     // find the number of ports for this uni
-    SI *ips = malloc(sizeof(SI) * n->state.bcast_limit);
+    SI *ips = (in_addr *) malloc(sizeof(SI) * n->state.bcast_limit);
 
     if (!ips) {
       // Fallback to broadcast mode
@@ -710,7 +712,7 @@ int artnet_raw_send_dmx(artnet_node vn,
   }
 
   // set dst addr and length
-  p.to.s_addr = n->state.bcast_addr.s_addr;
+  p.to = n->state.bcast_addr;
 
   p.length = sizeof(artnet_dmx_t) - (ARTNET_DMX_LENGTH - length);
 
@@ -753,7 +755,7 @@ int artnet_send_address(artnet_node vn,
     return ARTNET_EACTION;
 
   if (n->state.node_type == ARTNET_SRV || n->state.node_type == ARTNET_RAW) {
-    p.to.s_addr = ent->ip.s_addr;
+    p.to = ent->ip;
 
     p.length = sizeof(artnet_address_t);
     p.type = ARTNET_ADDRESS;
@@ -808,7 +810,7 @@ int artnet_send_input(artnet_node vn,
 
   if (n->state.node_type == ARTNET_SRV || n->state.node_type == ARTNET_RAW) {
     // set dst, type and length
-    p.to.s_addr = ent->ip.s_addr;
+    p.to = ent->ip;
 
     p.length = sizeof(artnet_input_t);
     p.type = ARTNET_INPUT;
@@ -871,7 +873,7 @@ int artnet_send_firmware(
     blen = length * sizeof(uint16_t);
 
     // store the parameters for this transfer
-    ent->firmware.data = malloc(blen);
+    ent->firmware.data = (uint16_t *) malloc(blen);
 
     if ( ent->firmware.data == NULL) {
       artnet_error_malloc();
@@ -1387,14 +1389,14 @@ int artnet_dump_config(artnet_node vn) {
  * @param socket the index of the socket descriptor to fetch (0 or 1)
  * @return the socket descriptor
  */
-artnet_socket_t artnet_get_sd(artnet_node vn) {
+int8_t artnet_get_sd(artnet_node vn, artnet_socket_t *fd) {
   node n = (node) vn;
   check_nullnode(vn);
 
   if (n->state.mode != ARTNET_ON)
     return ARTNET_EACTION;
 
-  return n->sd;
+  fd = &n->sd;
 }
 
 

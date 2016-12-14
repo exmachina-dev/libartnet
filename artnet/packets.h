@@ -25,9 +25,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 
-#ifndef WIN32
-#include <netinet/in.h>
-#endif
+#include <inet.h>
 
 #include <artnet/common.h>
 
@@ -38,7 +36,7 @@
 	#define PACKED
 	#pragma pack(push,1)
 #else
-	#define PACKED __attribute__((packed))
+	//#define PACKED __attribute__((packed))
 #endif
 
 
@@ -402,7 +400,7 @@ typedef artnet_packet_t *artnet_packet;
 	#pragma pack(pop)
 #endif
 
-#undef PACKED
+//#undef PACKED
 
 
 #endif

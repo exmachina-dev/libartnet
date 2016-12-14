@@ -22,14 +22,11 @@
 #  include <config.h>
 #endif
 
-#if !defined(WIN32) && !defined(_MSC_VER)
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#endif
+#include "EthernetInterface.h"
+#include "inet.h"
 
 #include <string.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <time.h>
 #include <stdio.h>
 
@@ -84,8 +81,8 @@ extern uint16_t LOW_BYTE;
 extern uint16_t HIGH_BYTE;
 
 // non artnet specific
-#define SA struct sockaddr
-#define SI struct in_addr
+#define SA nsapi_addr
+#define SI in_addr
 
 #ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -128,6 +125,7 @@ extern uint16_t HIGH_BYTE;
 #define short_get_low_byte(x)  (LOW_BYTE & x)
 
 #define bytes_to_short(h,l) ( ((h << 8) & 0xff00) | (l & 0x00FF) );
+
 
 /*
  * These are enums for fields in packets

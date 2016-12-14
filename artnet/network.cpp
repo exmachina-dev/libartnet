@@ -1,0 +1,273 @@
+/*
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * network.c
+ * Network code for libartnet
+ * Copyright (C) 2004-2007 Simon Newton
+ *
+ */
+
+//#include <errno.h>
+
+#include "mbed.h"
+#include "NetworkInterface.h"
+#include "nsapi_types.h"
+
+#include "private.h"
+
+extern EthernetInterface* ARTNET_ETH_PTR;
+
+
+enum { INITIAL_IFACE_COUNT = 10 };
+enum { IFACE_COUNT_INC = 5 };
+enum { IFNAME_SIZE = 32 }; // 32 sounds a reasonable size
+
+typedef struct iface_s {
+    struct SocketAddress ip_addr;
+    struct SocketAddress bcast_addr;
+    int8_t hw_addr[ARTNET_MAC_SIZE];
+    char   if_name[IFNAME_SIZE];
+    struct iface_s *next;
+} iface_t;
+
+unsigned long LOOPBACK_IP = 0x7F000001;
+
+
+
+
+/*
+ * Scan for interfaces, and work out which one the user wanted to use.
+ */
+int artnet_net_init(node n, const char *preferred_ip) {
+
+    int found = FALSE;
+    int i;
+    int ret = ARTNET_EOK;
+
+    in_addr saddr;
+    in_addr baddr;
+    inet_aton(preferred_ip, &saddr);
+    inet_aton("255.255.255.0", &saddr);
+    n->state.ip_addr = saddr;
+    n->state.bcast_addr = baddr;
+    uint8_t mac[6] = {0x00, 0x02, 0xf7, 0xf2, 0xa8, 0x30};
+    memcpy(&n->state.hw_addr, &mac, ARTNET_MAC_SIZE);
+
+    return ret;
+}
+
+
+/*
+ * Start listening on the socket
+ */
+int artnet_net_start(node n) {
+    UDPSocket sock;
+    int true_flag = TRUE;
+    node tmp;
+
+    // only attempt to bind if we are the group master
+    if (n->peering.master == TRUE) {
+
+        // create socket
+        sock = new UDPSocket;
+
+        if (sock.open(ARTNET_ETH_PTR)) {
+            artnet_error("Could not create socket %s", artnet_net_last_error());
+            return ARTNET_ENET;
+        }
+
+
+        if (n->state.verbose)
+            printf("Binding to %d \n", ARTNET_PORT);
+
+        // allow bcasting
+        sock.set_broadcast(true);
+        artnet_error("Failed to bind to socket %s", artnet_net_last_error());
+        artnet_net_close(sock);
+        return ARTNET_ENET;
+    }
+
+    // allow reusing 6454 port _ 
+    // Not possible with UDPSocket ?
+    if (sock.setsockopt((int)NSAPI_SOCKET, (int)NSAPI_REUSEADDR, (int)true, sizeof(int))) {
+        artnet_error("Failed to bind to socket %s", artnet_net_last_error());
+        artnet_net_close(sock);
+        return ARTNET_ENET;
+    }
+
+    if (n->state.verbose)
+        printf("Binding to %s \n", inet_ntoa(servAddr.sin_addr));
+
+    // bind sockets
+    if (sock.bind(ARTNET_PORT) == -1) {
+        artnet_error("Failed to bind to socket %s", artnet_net_last_error());
+        artnet_net_close(sock);
+        return ARTNET_ENET;
+    }
+
+
+    n->sd = sock;
+
+    // Propagate the socket to all our peers
+    for (tmp = n->peering.peer; tmp && tmp != n; tmp = tmp->peering.peer)
+        tmp->sd = sock;
+
+    return ARTNET_EOK;
+}
+
+
+/*
+ * Receive a packet.
+ */
+int artnet_net_recv(node n, artnet_packet p, int delay) {
+    ssize_t len;
+    SocketAddress cliAddr;
+    socklen_t cliLen = sizeof(cliAddr);
+    fd_set rset;
+    struct timeval tv;
+    // int maxfdp1 = n->sd + 1;
+
+    tv.tv_usec = 0;
+    tv.tv_sec = delay;
+    p->length = 0;
+
+    /*
+    switch (select(maxfdp1, &rset, NULL, NULL, &tv)) {
+        case 0:
+            // timeout
+            return RECV_NO_DATA;
+            break;
+        case -1:
+            if ( errno != EINTR) {
+                artnet_error("Select error %s", artnet_net_last_error());
+                return ARTNET_ENET;
+            }
+            return ARTNET_EOK;
+            break;
+        default:
+            break;
+    }
+    */
+
+    // need a check here for the amount of data read
+    // should prob allow an extra byte after data, and pass the size as sizeof(Data) +1
+    // then check the size read and if equal to size(data)+1 we have an error
+    len = n->sd->recvfrom(
+            &cliAddr,
+            &(p->data), // char* for win32
+            sizeof(p->data));
+
+    if (len < 0) {
+        artnet_error("Recvfrom error %s", artnet_net_last_error());
+        return ARTNET_ENET;
+    }
+
+    if (cliAddr.sin_addr.s_addr == n->state.ip_addr.s_addr ||
+            ntohl(cliAddr.sin_addr.s_addr) == LOOPBACK_IP) {
+        p->length = 0;
+        return ARTNET_EOK;
+    }
+
+    p->length = len;
+    memcpy(&(p->from), &cliAddr.sin_addr, sizeof(struct in_addr));
+    // should set to in here if we need it
+    return ARTNET_EOK;
+}
+
+
+/*
+ * Send a packet.
+ */
+int artnet_net_send(node n, artnet_packet p) {
+    SocketAddress addr;
+    int ret;
+
+    if (n->state.mode != ARTNET_ON)
+        return ARTNET_EACTION;
+
+    addr.set_port(ARTNET_PORT);
+    addr.set_addr(p->to);
+    p->from = n->state.ip_addr;
+
+    if (n->state.verbose)
+        printf("sending to %s\n" , addr.get_ip_address());
+
+    ret = n->sd.sendto(&addr,
+            &p->data, // char* required for win32
+            p->length,
+            );
+
+    if (ret == -1) {
+        artnet_error("Sendto failed: %s", artnet_net_last_error());
+        n->state.report_code = ARTNET_RCUDPFAIL;
+        return ARTNET_ENET;
+
+    } else if (p->length != ret) {
+        artnet_error("failed to send full datagram");
+        n->state.report_code = ARTNET_RCSOCKETWR1;
+        return ARTNET_ENET;
+    }
+
+    if (n->callbacks.send.fh) {
+        get_type(p);
+        n->callbacks.send.fh(n, p, n->callbacks.send.data);
+    }
+    return ARTNET_EOK;
+}
+
+
+int artnet_net_set_fdset(node n, fd_set *fdset) {
+    // FD_SET((unsigned int) n->sd, fdset);
+    return ARTNET_EOK;
+}
+
+
+/*
+ * Close a socket
+ */
+int artnet_net_close(artnet_socket_t sock) {
+    if (sock.close()) {
+        artnet_error(artnet_net_last_error());
+        return ARTNET_ENET;
+    }
+    return ARTNET_EOK;
+}
+
+
+/*
+ * Convert a string to an in_addr
+ */
+int artnet_net_inet_aton(const char *ip_address, struct in_addr *address) {
+#ifdef HAVE_INET_ATON
+    if (!inet_aton(ip_address, address)) {
+#else
+        in_addr_t *addr = (in_addr_t*) address;
+        if ((*addr = inet_addr(ip_address)) == INADDR_NONE &&
+                strcmp(ip_address, "255.255.255.255")) {
+#endif
+            artnet_error("IP conversion from %s failed", ip_address);
+            return ARTNET_EARG;
+        }
+        return ARTNET_EOK;
+    }
+
+
+    /*
+     *
+     */
+    const char *artnet_net_last_error() {
+        return strerror(errno);
+    }
+
