@@ -21,19 +21,13 @@
 #ifndef ARTNET_HEADER_H
 #define ARTNET_HEADER_H
 
+#include "mbed.h"
+
 #include <stdint.h>
 // order is important here for osx
 #include <sys/types.h>
 
-#if defined(TARGET_LPC176X)
 #include "UDPSocket.h"
-
-#elif !defined(WIN32) && !defined(_MSC_VER)
-#include <sys/select.h>
-#else
-#include <winsock2.h>
-typedef unsigned long in_addr_t;
-#endif
 
 #include <artnet/common.h>
 
@@ -100,11 +94,13 @@ typedef enum  {
 
 
 // defines the status of the firmware transfer
+#ifdef ARTNET_FEATURE_FIRMWARE
 typedef enum  {
   ARTNET_FIRMWARE_BLOCKGOOD = 0x00,
   ARTNET_FIRMWARE_ALLGOOD = 0x01,
   ARTNET_FIRMWARE_FAIL = 0xff,
 } artnet_firmware_status_code;
+#endif
 
 // tod actions
 typedef enum  {
@@ -239,9 +235,11 @@ EXTERN int artnet_set_dmx_handler(artnet_node vn,
 EXTERN int artnet_set_program_handler(artnet_node vn,
   int (*fh)(artnet_node n, void *d),
   void *data);
+#ifdef ARTNET_FEATURE_FIRMWARE
 EXTERN int artnet_set_firmware_handler(artnet_node vn,
   int (*fh)(artnet_node n, int ubea, uint16_t *data, int length, void *d),
   void *data);
+#endif
 EXTERN int artnet_set_rdm_handler(artnet_node vn,
   int (*fh)(artnet_node n, int address, uint8_t *rdm, int length, void *d),
   void *data);
@@ -273,9 +271,12 @@ EXTERN int artnet_send_address(artnet_node n,
   uint8_t outAddr[ARTNET_MAX_PORTS],
   uint8_t subAddr,
   artnet_port_command_t cmd);
+#ifdef ARTNET_FEATURE_INPUT
 EXTERN int artnet_send_input(artnet_node n,
   artnet_node_entry e,
   uint8_t settings[ARTNET_MAX_PORTS]);
+#endif
+#ifdef ARTNET_FEATURE_FIRMWARE
 EXTERN int artnet_send_firmware(artnet_node vn,
   artnet_node_entry e,
   int ubea,
@@ -286,13 +287,17 @@ EXTERN int artnet_send_firmware(artnet_node vn,
 EXTERN int artnet_send_firmware_reply(artnet_node vn,
   artnet_node_entry e,
   artnet_firmware_status_code code);
+#endif
 
+#ifdef ARTNET_FEATURE_TOD
 // rdm functions
 EXTERN int artnet_send_tod_request(artnet_node vn);
 EXTERN int artnet_send_tod_control(artnet_node vn,
   uint8_t address,
   artnet_tod_command_code action);
 EXTERN int artnet_send_tod_data(artnet_node vn, int port);
+#endif
+#ifdef ARTNET_FEATURE_RDM
 EXTERN int artnet_send_rdm(artnet_node vn,
   uint8_t address,
   uint8_t *data,
@@ -307,6 +312,7 @@ EXTERN int artnet_add_rdm_devices(artnet_node vn,
 EXTERN int artnet_remove_rdm_device(artnet_node vn,
   int port,
   uint8_t uid[ARTNET_RDM_UID_WIDTH]);
+#endif
 
 // recv functions
 EXTERN uint8_t *artnet_read_dmx(artnet_node n, int port_id, int *length);

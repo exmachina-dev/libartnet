@@ -22,7 +22,7 @@
 #  include <config.h>
 #endif
 
-#include "EthernetInterface.h"
+#include "UDPSocket.h"
 #include "inet.h"
 
 #include <string.h>
@@ -358,6 +358,7 @@ typedef struct {
  * this struct keeps the information such as how much data has been transfered
  * and the address of the peer. It's also used for receiving firmware
  */
+#ifdef ARTNET_FEATURE_FIRMWARE
 typedef struct {
   uint16_t *data;
   int      bytes_current;
@@ -369,6 +370,7 @@ typedef struct {
   int      (*callback)(artnet_node n, artnet_firmware_status_code code, void *d);
   void     *user_data;
 } firmware_transfer_t;
+#endif
 
 /*
  * The node entry in the LL. It contains the public entry, as well as some stuff
@@ -377,7 +379,9 @@ typedef struct {
 typedef struct node_entry_private_s {
   artnet_node_entry_t pub;
   struct node_entry_private_s *next;
+#ifdef ARTNET_FEATURE_FIRMWARE
   firmware_transfer_t firmware;
+#endif
   SI ip;  // don't rely on the ip address that the node
           // sends, they could be faking it. This is the ip that
           // the pollreply was sent from
@@ -453,12 +457,15 @@ typedef struct artnet_node_s{
   } ports;
   artnet_reply_t ar_temp;       // buffered artpoll reply packet
   node_list_t node_list;        // node list
+#ifdef ARTNET_FEATURE_FIRMWARE
   firmware_transfer_t firmware; // firmware details
+#endif
   node_peering_t peering;       // peer if we've joined a group
 } artnet_node_t;
 
 
 typedef artnet_node_t *node;
+
 
 /*
  * Function definitions follow
@@ -466,7 +473,9 @@ typedef artnet_node_t *node;
 
 // exported from artnet.c
 node_entry_private_t *find_private_entry( node n, artnet_node_entry e);
+#ifdef ARTNET_FEATURE_FIRMWARE
 void check_timeouts(node n);
+#endif
 node_entry_private_t *find_entry_from_ip(node_list_t *nl, SI ip);
 int artnet_nl_update(node_list_t *nl, artnet_packet reply);
 
@@ -481,8 +490,10 @@ void reset_firmware_upload(node n);
 int artnet_tx_poll(node n, const char *ip,  artnet_ttm_value_t ttm);
 int artnet_tx_poll_reply(node n, int reply);
 int artnet_tx_tod_data(node n, int id);
+#ifdef ARTNET_FEATURE_FIRMWARE
 int artnet_tx_firmware_reply(node n, in_addr_t ip, artnet_firmware_status_code code);
 int artnet_tx_firmware_packet(node n, firmware_transfer_t *firm );
+#endif
 int artnet_tx_tod_request(node n);
 int artnet_tx_tod_control(node n, uint8_t address, artnet_tod_command_code action);
 int artnet_tx_rdm(node n, uint8_t address, uint8_t *data, int length);

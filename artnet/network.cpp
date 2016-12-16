@@ -21,7 +21,9 @@
 
 //#include <errno.h>
 
+
 #include "mbed.h"
+#include "AN_ethernet.h"
 #include "NetworkInterface.h"
 #include "nsapi_types.h"
 
@@ -52,12 +54,11 @@ unsigned long LOOPBACK_IP = 0x7F000001;
  */
 int artnet_net_init(node n, const char *preferred_ip) {
 
-    int found = FALSE;
-    int i;
     int ret = ARTNET_EOK;
 
     in_addr saddr;
     in_addr baddr;
+    // Conversion bug
     inet_aton(preferred_ip, &saddr);
     inet_aton("255.255.255.0", &saddr);
     n->state.ip_addr = saddr;
@@ -74,17 +75,23 @@ int artnet_net_init(node n, const char *preferred_ip) {
  */
 int artnet_net_start(node n) {
     UDPSocket sock;
-    int true_flag = TRUE;
     node tmp;
 
     // only attempt to bind if we are the group master
     if (n->peering.master == TRUE) {
 
         // create socket
-        sock = new UDPSocket;
+        sock = UDPSocket();
+        int nsapi_rtn;
 
-        if (sock.open(ARTNET_ETH_PTR)) {
-            artnet_error("Could not create socket %s", artnet_net_last_error());
+        // Not working yet
+        // ARTNET_ETH_PTR->set_network(inet_ntoa(n->state.ip_addr),
+        //         inet_ntoa(n->state.bcast_addr), "0.0.0.0");
+        ARTNET_ETH_PTR->connect();
+
+
+        if (nsapi_rtn = sock.open(ARTNET_ETH_PTR)) {
+            artnet_error("Could not create socket: %d", nsapi_rtn);
             return ARTNET_ENET;
         }
 
@@ -93,22 +100,24 @@ int artnet_net_start(node n) {
             printf("Binding to %d \n", ARTNET_PORT);
 
         // allow bcasting
-        sock.set_broadcast(true);
-        artnet_error("Failed to bind to socket %s", artnet_net_last_error());
-        artnet_net_close(sock);
-        return ARTNET_ENET;
+        if(sock.set_broadcast(true) != 0) {
+            artnet_error("Failed to bind to socket %s", artnet_net_last_error());
+            artnet_net_close(sock);
+            return ARTNET_ENET;
+        }
     }
 
     // allow reusing 6454 port _ 
     // Not possible with UDPSocket ?
-    if (sock.setsockopt((int)NSAPI_SOCKET, (int)NSAPI_REUSEADDR, (int)true, sizeof(int))) {
+    uint8_t value = 1;
+    if (sock.setsockopt((int)NSAPI_SOCKET, (int)NSAPI_REUSEADDR, &value, sizeof(int))) {
         artnet_error("Failed to bind to socket %s", artnet_net_last_error());
         artnet_net_close(sock);
         return ARTNET_ENET;
     }
 
     if (n->state.verbose)
-        printf("Binding to %s \n", inet_ntoa(servAddr.sin_addr));
+        printf("Binding to %d \n", ARTNET_PORT);
 
     // bind sockets
     if (sock.bind(ARTNET_PORT) == -1) {
@@ -134,13 +143,8 @@ int artnet_net_start(node n) {
 int artnet_net_recv(node n, artnet_packet p, int delay) {
     ssize_t len;
     SocketAddress cliAddr;
-    socklen_t cliLen = sizeof(cliAddr);
-    fd_set rset;
-    struct timeval tv;
     // int maxfdp1 = n->sd + 1;
 
-    tv.tv_usec = 0;
-    tv.tv_sec = delay;
     p->length = 0;
 
     /*
@@ -164,7 +168,7 @@ int artnet_net_recv(node n, artnet_packet p, int delay) {
     // need a check here for the amount of data read
     // should prob allow an extra byte after data, and pass the size as sizeof(Data) +1
     // then check the size read and if equal to size(data)+1 we have an error
-    len = n->sd->recvfrom(
+    len = n->sd.recvfrom(
             &cliAddr,
             &(p->data), // char* for win32
             sizeof(p->data));
@@ -174,14 +178,16 @@ int artnet_net_recv(node n, artnet_packet p, int delay) {
         return ARTNET_ENET;
     }
 
-    if (cliAddr.sin_addr.s_addr == n->state.ip_addr.s_addr ||
-            ntohl(cliAddr.sin_addr.s_addr) == LOOPBACK_IP) {
+    in_addr_t _ip = ntohl((uint32_t)cliAddr.get_addr().bytes);
+    
+    if (_ip == n->state.ip_addr.s_addr ||
+            ntohl(_ip) == LOOPBACK_IP) {
         p->length = 0;
         return ARTNET_EOK;
     }
 
     p->length = len;
-    memcpy(&(p->from), &cliAddr.sin_addr, sizeof(struct in_addr));
+    memcpy(&(p->from), &_ip, sizeof(struct in_addr));
     // should set to in here if we need it
     return ARTNET_EOK;
 }
@@ -198,19 +204,16 @@ int artnet_net_send(node n, artnet_packet p) {
         return ARTNET_EACTION;
 
     addr.set_port(ARTNET_PORT);
-    addr.set_addr(p->to);
+    addr.set_ip_bytes(&(p->to.s_addr), NSAPI_IPv4);
     p->from = n->state.ip_addr;
 
     if (n->state.verbose)
         printf("sending to %s\n" , addr.get_ip_address());
 
-    ret = n->sd.sendto(&addr,
-            &p->data, // char* required for win32
-            p->length,
-            );
+    ret = n->sd.sendto(addr, (void*)&p->data, p->length);
 
-    if (ret == -1) {
-        artnet_error("Sendto failed: %s", artnet_net_last_error());
+    if (ret < 0) {
+        artnet_error("Sendto failed: %d", ret);
         n->state.report_code = ARTNET_RCUDPFAIL;
         return ARTNET_ENET;
 

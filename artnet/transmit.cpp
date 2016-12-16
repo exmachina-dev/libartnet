@@ -95,6 +95,7 @@ int artnet_tx_poll_reply(node n, int response) {
 }
 
 
+#ifdef ARTNET_FEATURE_TOD
 /*
  * Send a tod request
  */
@@ -206,8 +207,10 @@ int artnet_tx_tod_control(node n,
 
   return artnet_net_send(n, &tod);
 }
+#endif
 
 
+#ifdef ARTNET_FEATURE_RDM
 /*
  * Send a RDM message
  * @param address the universe to address this datagram to
@@ -237,8 +240,10 @@ int artnet_tx_rdm(node n, uint8_t address, uint8_t *data, int length) {
   return artnet_net_send(n, &rdm);
 
 }
+#endif
 
 
+#ifdef ARTNET_FEATURE_FIRMWARE
 /*
  * Send a firmware reply
  * @param ip the ip address to send to
@@ -350,6 +355,7 @@ int artnet_tx_firmware_packet(node n, firmware_transfer_t *firm) {
   }
   return ARTNET_EOK;
 }
+#endif
 
 
 // this is called when the node's state changes to rebuild the

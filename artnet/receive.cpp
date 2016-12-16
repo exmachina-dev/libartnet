@@ -380,6 +380,7 @@ int handle_address(node n, artnet_packet p) {
 }
 
 
+#ifdef ARTNET_FEATURE_INPUT
 /*
  * handle art input.
  * ArtInput packets can disable input ports.
@@ -410,8 +411,10 @@ int _artnet_handle_input(node n, artnet_packet p) {
 
   return artnet_tx_poll_reply(n, TRUE);
 }
+#endif
 
 
+#ifdef ARTNET_FEATURE_TOD
 /***
  * handle tod request packet
  */
@@ -498,7 +501,9 @@ int handle_tod_control(node n, artnet_packet p) {
   }
   return ret;
 }
+#endif
 
+#ifdef ARTNET_FEATURE_RDM
 /**
  * handle rdm packet
  *
@@ -517,7 +522,9 @@ void handle_rdm(node n, artnet_packet p) {
 
   return;
 }
+#endif
 
+#ifdef ARTNET_FEATURE_FIRMWARE
 /**
  * handle a firmware master
  */
@@ -739,6 +746,7 @@ int handle_firmware_reply(node n, artnet_packet p) {
   }
   return ARTNET_EOK;
 }
+#endif
 
 
 /*
@@ -775,9 +783,12 @@ int handle(node n, artnet_packet p) {
     case ARTNET_ADDRESS:
       handle_address(n, p);
       break;
+#ifdef ARTNET_FEATURE_INPUT
     case ARTNET_INPUT:
       _artnet_handle_input(n, p);
       break;
+#endif
+#ifdef ARTNET_FEATURE_TOD
     case ARTNET_TODREQUEST:
       handle_tod_request(n, p);
       break;
@@ -787,9 +798,12 @@ int handle(node n, artnet_packet p) {
     case ARTNET_TODCONTROL:
       handle_tod_control(n, p);
       break;
+#endif
+#ifdef ARTNET_FEATURE_RDM
     case ARTNET_RDM:
       handle_rdm(n, p);
       break;
+#endif
     case ARTNET_VIDEOSTEUP:
       printf("vid setup\n");
       break;
@@ -805,12 +819,14 @@ int handle(node n, artnet_packet p) {
     case ARTNET_MACSLAVE:
       printf("mac slave\n");
       break;
+#ifdef ARTNET_FEATURE_FIRMWARE
     case ARTNET_FIRMWAREMASTER:
       handle_firmware(n, p);
       break;
     case ARTNET_FIRMWAREREPLY:
       handle_firmware_reply(n, p);
       break;
+#endif
     case ARTNET_IPPROG :
       handle_ipprog(n, p);
       break;
@@ -902,6 +918,7 @@ void merge(node n, int port_id, int length, uint8_t *latest) {
 }
 
 
+#ifdef ARTNET_FEATURE_FIRMWARE
 void reset_firmware_upload(node n) {
   n->firmware.bytes_current = 0;
   n->firmware.bytes_total = 0;
@@ -910,3 +927,4 @@ void reset_firmware_upload(node n) {
   n->firmware.last_time = 0;
   free(n->firmware.data);
 }
+#endif

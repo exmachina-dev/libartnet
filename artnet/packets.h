@@ -223,6 +223,7 @@ struct artnet_dmx_s {
 typedef struct artnet_dmx_s artnet_dmx_t;
 
 
+#ifdef ARTNET_FEATURE_INPUT
 struct artnet_input_s {
   uint8_t id[8];
   uint16_t  opCode;
@@ -236,8 +237,10 @@ struct artnet_input_s {
 } PACKED;
 
 typedef struct artnet_input_s artnet_input_t;
+#endif
 
 
+#ifdef ARTNET_FEATURE_TOD
 struct artnet_todrequest_s {
   uint8_t  id[8];
   uint16_t opCode;
@@ -287,7 +290,9 @@ struct artnet_toddata_s {
 } PACKED;
 
 typedef struct artnet_toddata_s artnet_toddata_t;
+#endif
 
+#ifdef ARTNET_FEATURE_FIRMWARE
 struct artnet_firmware_s {
   uint8_t  id[8];
   uint16_t opCode;
@@ -299,11 +304,13 @@ struct artnet_firmware_s {
   uint8_t  blockId;
   uint8_t  length[4];
   uint8_t  spare[20];
-  uint16_t  data[ARTNET_FIRMWARE_SIZE ];
+  uint8_t  data[ARTNET_FIRMWARE_SIZE ];
 } PACKED;
 
 typedef struct artnet_firmware_s artnet_firmware_t;
+#endif
 
+#ifdef ARTNET_FEATURE_TOD
 struct artnet_todcontrol_s {
   uint8_t  id[8];
   uint16_t opCode;
@@ -325,9 +332,11 @@ struct artnet_todcontrol_s {
 
 
 typedef struct artnet_todcontrol_s artnet_todcontrol_t;
+#endif
 
 
 
+#ifdef ARTNET_FEATURE_RDM
 struct artnet_rdm_s {
   uint8_t id[8];
   uint16_t  opCode;
@@ -350,8 +359,10 @@ struct artnet_rdm_s {
 
 
 typedef struct artnet_rdm_s artnet_rdm_t;
+#endif
 
 
+#ifdef ARTNET_FEATURE_FIRMWARE
 struct artnet_firmware_reply_s {
   uint8_t  id[8];
   uint16_t opCode;
@@ -364,6 +375,7 @@ struct artnet_firmware_reply_s {
 } PACKED;
 
 typedef struct artnet_firmware_reply_s artnet_firmware_reply_t;
+#endif
 
 
 
@@ -374,13 +386,23 @@ typedef union {
   artnet_ipprog_t aip;
   artnet_address_t addr;
   artnet_dmx_t admx;
+#ifdef ARTNET_FEATURE_INPUT
   artnet_input_t ainput;
+#endif
+#ifdef ARTNET_FEATURE_TOD
   artnet_todrequest_t todreq;
   artnet_toddata_t toddata;
+#endif
+#ifdef ARTNET_FEATURE_FIRMWARE
   artnet_firmware_t firmware;
   artnet_firmware_reply_t firmwarer;
+#endif
+#ifdef ARTNET_FEATURE_TOD
   artnet_todcontrol_t todcontrol;
+#endif
+#ifdef ARTNET_FEATURE_RDM
   artnet_rdm_t rdm;
+#endif
 } artnet_packet_union_t;
 
 
