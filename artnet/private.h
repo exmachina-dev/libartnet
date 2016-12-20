@@ -504,7 +504,7 @@ int artnet_tx_build_art_poll_reply(node n);
 int artnet_net_recv(node n, artnet_packet p, int block);
 int artnet_net_send(node n, artnet_packet p);
 int artnet_net_set_non_block(node n);
-int artnet_net_init(node n, const char *ip);
+int artnet_net_init(node n, const char *ip, const char *bcast, const char *gw);
 int artnet_net_start(node n);
 int artnet_net_close(artnet_socket_t sock);
 int artnet_net_join(node n1, node n2);

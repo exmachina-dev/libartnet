@@ -31,6 +31,8 @@
 
 extern EthernetInterface* ARTNET_ETH_PTR;
 
+extern Serial* USBport;
+
 
 enum { INITIAL_IFACE_COUNT = 10 };
 enum { IFACE_COUNT_INC = 5 };
@@ -52,17 +54,43 @@ unsigned long LOOPBACK_IP = 0x7F000001;
 /*
  * Scan for interfaces, and work out which one the user wanted to use.
  */
-int artnet_net_init(node n, const char *preferred_ip) {
+int artnet_net_init(node n, const char *ip, const char *bcast, const char *gw) {
 
     int ret = ARTNET_EOK;
+    int rtn;
 
     in_addr saddr;
     in_addr baddr;
-    // Conversion bug
-    inet_aton(preferred_ip, &saddr);
-    inet_aton("255.255.255.0", &saddr);
+    in_addr netmask;
+
+    if (ip) {
+        if (rtn = ARTNET_ETH_PTR->set_network(ip, bcast, gw) != 0) {
+            artnet_error("Failed to set network: %d", rtn);
+            return ARTNET_ENET;
+        }
+    }
+
+    rtn = ARTNET_ETH_PTR->connect();
+
+    if (rtn != 0) {
+        artnet_error("Failed to set network: %d", rtn);
+        return ARTNET_ENET;
+    }
+
+    saddr.s_addr = inet_addr(ARTNET_ETH_PTR->get_ip_address());
+    netmask.s_addr = inet_addr(ARTNET_ETH_PTR->get_netmask());
+
+    baddr.s_addr = (uint32_t) saddr.s_addr & (uint32_t) netmask.s_addr;
+    baddr.s_addr |= (uint32_t) 0xffffffff & (uint32_t) ~netmask.s_addr;
+
+    //baddr.s_addr = inet_addr("192.168.0.21");
+
     n->state.ip_addr = saddr;
     n->state.bcast_addr = baddr;
+    if (n->state.verbose) {
+        USBport->printf("AN_IP: %s\r\n" , inet_ntoa(n->state.ip_addr));
+        USBport->printf("AN_BD: %s\r\n" , inet_ntoa(n->state.bcast_addr));
+    }
     uint8_t mac[6] = {0x00, 0x02, 0xf7, 0xf2, 0xa8, 0x30};
     memcpy(&n->state.hw_addr, &mac, ARTNET_MAC_SIZE);
 
@@ -74,54 +102,51 @@ int artnet_net_init(node n, const char *preferred_ip) {
  * Start listening on the socket
  */
 int artnet_net_start(node n) {
-    UDPSocket sock;
+    artnet_socket_t sock;
     node tmp;
 
     // only attempt to bind if we are the group master
     if (n->peering.master == TRUE) {
 
         // create socket
-        sock = UDPSocket();
+        sock = new UDPSocket();
         int nsapi_rtn;
 
-        // Not working yet
-        // ARTNET_ETH_PTR->set_network(inet_ntoa(n->state.ip_addr),
-        //         inet_ntoa(n->state.bcast_addr), "0.0.0.0");
-        ARTNET_ETH_PTR->connect();
 
-
-        if (nsapi_rtn = sock.open(ARTNET_ETH_PTR)) {
+        if ((nsapi_rtn = sock->open(ARTNET_ETH_PTR)) != 0) {
             artnet_error("Could not create socket: %d", nsapi_rtn);
             return ARTNET_ENET;
         }
 
 
         if (n->state.verbose)
-            printf("Binding to %d \n", ARTNET_PORT);
+            USBport->printf("Binding to %d \n", ARTNET_PORT);
 
         // allow bcasting
-        if(sock.set_broadcast(true) != 0) {
+        if(sock->set_broadcast(true) != 0) {
             artnet_error("Failed to bind to socket %s", artnet_net_last_error());
             artnet_net_close(sock);
             return ARTNET_ENET;
         }
+
+        sock->set_blocking(false);
     }
 
     // allow reusing 6454 port _ 
     // Not possible with UDPSocket ?
     uint8_t value = 1;
-    if (sock.setsockopt((int)NSAPI_SOCKET, (int)NSAPI_REUSEADDR, &value, sizeof(int))) {
+    if (sock->setsockopt((int)NSAPI_SOCKET, (int)NSAPI_REUSEADDR, &value, sizeof(int))) {
         artnet_error("Failed to bind to socket %s", artnet_net_last_error());
         artnet_net_close(sock);
         return ARTNET_ENET;
     }
 
     if (n->state.verbose)
-        printf("Binding to %d \n", ARTNET_PORT);
+        USBport->printf("Binding to %d \n", ARTNET_PORT);
 
     // bind sockets
-    if (sock.bind(ARTNET_PORT) == -1) {
-        artnet_error("Failed to bind to socket %s", artnet_net_last_error());
+    if (int ret = sock->bind(ARTNET_PORT) != 0) {
+        artnet_error("Failed to bind to socket: %d %s", ret, artnet_net_last_error());
         artnet_net_close(sock);
         return ARTNET_ENET;
     }
@@ -168,7 +193,7 @@ int artnet_net_recv(node n, artnet_packet p, int delay) {
     // need a check here for the amount of data read
     // should prob allow an extra byte after data, and pass the size as sizeof(Data) +1
     // then check the size read and if equal to size(data)+1 we have an error
-    len = n->sd.recvfrom(
+    len = n->sd->recvfrom(
             &cliAddr,
             &(p->data), // char* for win32
             sizeof(p->data));
@@ -198,19 +223,21 @@ int artnet_net_recv(node n, artnet_packet p, int delay) {
  */
 int artnet_net_send(node n, artnet_packet p) {
     SocketAddress addr;
+    uint8_t ip_bytes[ARTNET_IP_SIZE];
     int ret;
 
     if (n->state.mode != ARTNET_ON)
         return ARTNET_EACTION;
 
     addr.set_port(ARTNET_PORT);
-    addr.set_ip_bytes(&(p->to.s_addr), NSAPI_IPv4);
+    memcpy(&ip_bytes, &(p->to.s_addr), ARTNET_IP_SIZE);
+    addr.set_ip_bytes(ip_bytes, NSAPI_IPv4);
     p->from = n->state.ip_addr;
 
     if (n->state.verbose)
-        printf("sending to %s\n" , addr.get_ip_address());
+        USBport->printf("Sending to %s:%d, data size: %d\r\n" , addr.get_ip_address(), addr.get_port(), p->length);
 
-    ret = n->sd.sendto(addr, (void*)&p->data, p->length);
+    ret = n->sd->sendto(addr, (void*)&p->data, p->length);
 
     if (ret < 0) {
         artnet_error("Sendto failed: %d", ret);
@@ -241,7 +268,7 @@ int artnet_net_set_fdset(node n, fd_set *fdset) {
  * Close a socket
  */
 int artnet_net_close(artnet_socket_t sock) {
-    if (sock.close()) {
+    if (sock->close()) {
         artnet_error(artnet_net_last_error());
         return ARTNET_ENET;
     }

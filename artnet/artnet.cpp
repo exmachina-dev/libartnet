@@ -78,9 +78,9 @@ node AN_NODE = NULL;
  * @param debug level of logging provided 0: none
  * @return an artnet_node, or NULL on failure
  */
-artnet_node artnet_new(const char *ip, int verbose) {
+artnet_node artnet_new(const char *ip, const char *bcast, const char *gw, int verbose) {
     node n;
-    UDPSocket _sock;
+    //UDPSocket _sock;
     int i;
 
     n = (artnet_node_s *) malloc(sizeof(artnet_node_t));
@@ -118,9 +118,9 @@ artnet_node artnet_new(const char *ip, int verbose) {
     n->peering.peer = NULL;
     n->peering.master = TRUE;
 
-    n->sd = _sock;
+    //n->sd = &_sock;
 
-    if (artnet_net_init(n, ip)) {
+    if (artnet_net_init(n, ip, bcast, gw)) {
         free(n);
         return NULL;
     }
@@ -129,7 +129,7 @@ artnet_node artnet_new(const char *ip, int verbose) {
     n->state.send_apr_on_change = FALSE;
     n->state.ar_count = 0;
     n->state.report_code = ARTNET_RCPOWEROK;
-    memcpy(&(n->state.reply_addr), 0x0, NSAPI_IP_BYTES);
+    n->state.reply_addr.s_addr = 0x0;
     n->state.mode = ARTNET_STANDBY;
 
     // set all ports to MERGE HTP mode and disable
@@ -168,6 +168,8 @@ int artnet_start(artnet_node vn) {
 
     if (n->state.reply_addr.s_addr == 0) {
         n->state.reply_addr = n->state.bcast_addr;
+    } else {
+        USBport->printf("%d\r\n", n->state.reply_addr);
     }
 
     // build the initial reply
@@ -185,6 +187,9 @@ int artnet_start(artnet_node vn) {
 #endif
     } else {
         // send a reply on startup
+        if (n->state.verbose)
+            USBport->printf("Sending POLL REPLY.\r\n");
+
         if ((ret = artnet_tx_poll_reply(n, FALSE)))
             return ret;
     }

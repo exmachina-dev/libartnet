@@ -31,20 +31,11 @@
 
 #include <artnet/common.h>
 
-/* the external storage class is "extern" in UNIX; in MSW it's ugly. */
-#ifndef EXTERN
-#ifdef MSW
-#define EXTERN __declspec(dllexport) extern
-#else
-#define EXTERN extern
-#endif /* MSW */
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-EXTERN int ARTNET_ADDRESS_NO_CHANGE;
+extern int ARTNET_ADDRESS_NO_CHANGE;
 
 /**
  * An enum for setting the behaviour of a port.
@@ -209,61 +200,61 @@ typedef void *artnet_node;
 /** A list of remote ArtNet nodes */
 typedef void *artnet_node_list;
 
-typedef UDPSocket artnet_socket_t;
+typedef UDPSocket *artnet_socket_t;
 
 // node control functions
-EXTERN artnet_node artnet_new(const char *ip, int verbose);
-EXTERN int artnet_setoem(artnet_node vn, uint8_t hi, uint8_t lo);
-EXTERN int artnet_setesta(artnet_node vn, char hi, char lo);
-EXTERN int artnet_set_bcast_limit(artnet_node vn, int limit);
-EXTERN int artnet_start(artnet_node n);
-EXTERN int artnet_read(artnet_node n, int timeout);
-EXTERN int artnet_stop(artnet_node n);
-EXTERN int artnet_destroy(artnet_node n);
+extern artnet_node artnet_new(const char *ip, const char *bcast, const char *gw, int verbose);
+extern int artnet_setoem(artnet_node vn, uint8_t hi, uint8_t lo);
+extern int artnet_setesta(artnet_node vn, char hi, char lo);
+extern int artnet_set_bcast_limit(artnet_node vn, int limit);
+extern int artnet_start(artnet_node n);
+extern int artnet_read(artnet_node n, int timeout);
+extern int artnet_stop(artnet_node n);
+extern int artnet_destroy(artnet_node n);
 
 int artnet_join(artnet_node vn1, artnet_node vn2);
 
 // handler functions
 // these need to be cleaned up into a generic interface
-EXTERN int artnet_set_handler(artnet_node vn,
+extern int artnet_set_handler(artnet_node vn,
   artnet_handler_name_t handler,
   int (*fh)(artnet_node n, void *pp, void *d),
   void* data);
-EXTERN int artnet_set_dmx_handler(artnet_node vn,
+extern int artnet_set_dmx_handler(artnet_node vn,
   int (*fh)(artnet_node n, int port, void *d),
   void *data);
-EXTERN int artnet_set_program_handler(artnet_node vn,
+extern int artnet_set_program_handler(artnet_node vn,
   int (*fh)(artnet_node n, void *d),
   void *data);
 #ifdef ARTNET_FEATURE_FIRMWARE
-EXTERN int artnet_set_firmware_handler(artnet_node vn,
+extern int artnet_set_firmware_handler(artnet_node vn,
   int (*fh)(artnet_node n, int ubea, uint16_t *data, int length, void *d),
   void *data);
 #endif
-EXTERN int artnet_set_rdm_handler(artnet_node vn,
+extern int artnet_set_rdm_handler(artnet_node vn,
   int (*fh)(artnet_node n, int address, uint8_t *rdm, int length, void *d),
   void *data);
-EXTERN int artnet_set_rdm_initiate_handler(artnet_node vn,
+extern int artnet_set_rdm_initiate_handler(artnet_node vn,
   int (*fh)(artnet_node n, int port, void *d),
   void *data);
-EXTERN int artnet_set_rdm_tod_handler(artnet_node vn,
+extern int artnet_set_rdm_tod_handler(artnet_node vn,
   int (*fh)(artnet_node n, int port, void *d),
   void *data);
 
 // send functions
-EXTERN int artnet_send_poll(artnet_node n,
+extern int artnet_send_poll(artnet_node n,
   const char *ip,
   artnet_ttm_value_t talk_to_me);
-EXTERN int artnet_send_poll_reply(artnet_node n);
-EXTERN int artnet_send_dmx(artnet_node n,
+extern int artnet_send_poll_reply(artnet_node n);
+extern int artnet_send_dmx(artnet_node n,
   int port_id,
   int16_t length,
   const uint8_t *data);
-EXTERN int artnet_raw_send_dmx(artnet_node vn,
+extern int artnet_raw_send_dmx(artnet_node vn,
   uint8_t uni,
   int16_t length,
   const uint8_t *data);
-EXTERN int artnet_send_address(artnet_node n,
+extern int artnet_send_address(artnet_node n,
   artnet_node_entry e,
   const char *shortName,
   const char *longName,
@@ -272,83 +263,83 @@ EXTERN int artnet_send_address(artnet_node n,
   uint8_t subAddr,
   artnet_port_command_t cmd);
 #ifdef ARTNET_FEATURE_INPUT
-EXTERN int artnet_send_input(artnet_node n,
+extern int artnet_send_input(artnet_node n,
   artnet_node_entry e,
   uint8_t settings[ARTNET_MAX_PORTS]);
 #endif
 #ifdef ARTNET_FEATURE_FIRMWARE
-EXTERN int artnet_send_firmware(artnet_node vn,
+extern int artnet_send_firmware(artnet_node vn,
   artnet_node_entry e,
   int ubea,
   uint16_t *data,
   int length,
   int (*fh)(artnet_node n, artnet_firmware_status_code code, void *d),
   void *user_data);
-EXTERN int artnet_send_firmware_reply(artnet_node vn,
+extern int artnet_send_firmware_reply(artnet_node vn,
   artnet_node_entry e,
   artnet_firmware_status_code code);
 #endif
 
 #ifdef ARTNET_FEATURE_TOD
 // rdm functions
-EXTERN int artnet_send_tod_request(artnet_node vn);
-EXTERN int artnet_send_tod_control(artnet_node vn,
+extern int artnet_send_tod_request(artnet_node vn);
+extern int artnet_send_tod_control(artnet_node vn,
   uint8_t address,
   artnet_tod_command_code action);
-EXTERN int artnet_send_tod_data(artnet_node vn, int port);
+extern int artnet_send_tod_data(artnet_node vn, int port);
 #endif
 #ifdef ARTNET_FEATURE_RDM
-EXTERN int artnet_send_rdm(artnet_node vn,
+extern int artnet_send_rdm(artnet_node vn,
   uint8_t address,
   uint8_t *data,
   int length);
-EXTERN int artnet_add_rdm_device(artnet_node vn,
+extern int artnet_add_rdm_device(artnet_node vn,
   int port,
   uint8_t uid[ARTNET_RDM_UID_WIDTH]);
-EXTERN int artnet_add_rdm_devices(artnet_node vn,
+extern int artnet_add_rdm_devices(artnet_node vn,
   int port,
   uint8_t *uid,
   int count);
-EXTERN int artnet_remove_rdm_device(artnet_node vn,
+extern int artnet_remove_rdm_device(artnet_node vn,
   int port,
   uint8_t uid[ARTNET_RDM_UID_WIDTH]);
 #endif
 
 // recv functions
-EXTERN uint8_t *artnet_read_dmx(artnet_node n, int port_id, int *length);
+extern uint8_t *artnet_read_dmx(artnet_node n, int port_id, int *length);
 
 // state changing functions
-EXTERN int artnet_set_node_type(artnet_node n, artnet_node_type type);
-EXTERN int artnet_set_short_name(artnet_node vn, const char *name);
-EXTERN int artnet_set_long_name(artnet_node n, const char *name);
+extern int artnet_set_node_type(artnet_node n, artnet_node_type type);
+extern int artnet_set_short_name(artnet_node vn, const char *name);
+extern int artnet_set_long_name(artnet_node n, const char *name);
 
 //port manipulation functions
-EXTERN int artnet_set_port_type(artnet_node n,
+extern int artnet_set_port_type(artnet_node n,
                                 int id,
                                 artnet_port_settings_t settings,
                                 artnet_port_data_code data);
-EXTERN int artnet_set_port_addr(artnet_node n,
+extern int artnet_set_port_addr(artnet_node n,
                                 int id,
                                 artnet_port_dir_t dir,
                                 uint8_t addr);
-EXTERN int artnet_set_subnet_addr(artnet_node n, uint8_t subnet);
-EXTERN int artnet_get_universe_addr(artnet_node n,
+extern int artnet_set_subnet_addr(artnet_node n, uint8_t subnet);
+extern int artnet_get_universe_addr(artnet_node n,
                                     int id,
                                     artnet_port_dir_t dir);
 
 //node list functions
-EXTERN artnet_node_list artnet_get_nl(artnet_node n);
-EXTERN artnet_node_entry artnet_nl_first(artnet_node_list nl);
-EXTERN artnet_node_entry artnet_nl_next(artnet_node_list nl);
-EXTERN int artnet_nl_get_length(artnet_node_list nl);
+extern artnet_node_list artnet_get_nl(artnet_node n);
+extern artnet_node_entry artnet_nl_first(artnet_node_list nl);
+extern artnet_node_entry artnet_nl_next(artnet_node_list nl);
+extern int artnet_nl_get_length(artnet_node_list nl);
 
 // misc
-EXTERN int artnet_dump_config(artnet_node n);
-EXTERN int artnet_get_config(artnet_node n, artnet_node_config_t *config);
-EXTERN artnet_socket_t artnet_get_sd(artnet_node n);
-EXTERN int artnet_set_fdset(artnet_node vn, fd_set *fdset);
+extern int artnet_dump_config(artnet_node n);
+extern int artnet_get_config(artnet_node n, artnet_node_config_t *config);
+extern artnet_socket_t artnet_get_sd(artnet_node n);
+extern int artnet_set_fdset(artnet_node vn, fd_set *fdset);
 
-EXTERN char *artnet_strerror();
+extern char *artnet_strerror();
 
 #ifdef __cplusplus
 }
