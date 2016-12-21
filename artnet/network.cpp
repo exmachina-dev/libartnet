@@ -88,8 +88,8 @@ int artnet_net_init(node n, const char *ip, const char *bcast, const char *gw) {
     n->state.ip_addr = saddr;
     n->state.bcast_addr = baddr;
     if (n->state.verbose) {
-        USBport->printf("AN_IP: %s\r\n" , inet_ntoa(n->state.ip_addr));
-        USBport->printf("AN_BD: %s\r\n" , inet_ntoa(n->state.bcast_addr));
+        ARTNET_PRINTF("AN_IP: %s\r\n" , inet_ntoa(n->state.ip_addr));
+        ARTNET_PRINTF("AN_BD: %s\r\n" , inet_ntoa(n->state.bcast_addr));
     }
     uint8_t mac[6] = {0x00, 0x02, 0xf7, 0xf2, 0xa8, 0x30};
     memcpy(&n->state.hw_addr, &mac, ARTNET_MAC_SIZE);
@@ -120,7 +120,7 @@ int artnet_net_start(node n) {
 
 
         if (n->state.verbose)
-            USBport->printf("Binding to %d \n", ARTNET_PORT);
+            ARTNET_PRINTF("Binding to %d \n", ARTNET_PORT);
 
         // allow bcasting
         if(sock->set_broadcast(true) != 0) {
@@ -142,7 +142,7 @@ int artnet_net_start(node n) {
     }
 
     if (n->state.verbose)
-        USBport->printf("Binding to %d \n", ARTNET_PORT);
+        ARTNET_PRINTF("Binding to %d \n", ARTNET_PORT);
 
     // bind sockets
     if (int ret = sock->bind(ARTNET_PORT) != 0) {
@@ -235,7 +235,7 @@ int artnet_net_send(node n, artnet_packet p) {
     p->from = n->state.ip_addr;
 
     if (n->state.verbose)
-        USBport->printf("Sending to %s:%d, data size: %d\r\n" , addr.get_ip_address(), addr.get_port(), p->length);
+        ARTNET_PRINTF("Sending to %s:%d, data size: %d\r\n" , addr.get_ip_address(), addr.get_port(), p->length);
 
     ret = n->sd->sendto(addr, (void*)&p->data, p->length);
 

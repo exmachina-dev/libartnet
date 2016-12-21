@@ -514,7 +514,7 @@ void handle_rdm(node n, artnet_packet p) {
   if (check_callback(n, p, n->callbacks.rdm))
     return;
 
-  printf("rdm data\n");
+  ARTNET_PRINTF("rdm data\n");
 
   // hell dodgy
   if (n->callbacks.rdm_c.fh != NULL)
@@ -598,7 +598,7 @@ int handle_firmware(node n, artnet_packet p) {
 
     } else {
       // already in a transfer
-      printf("First, but already for a packet\n");
+      ARTNET_PRINTF("First, but already for a packet\n");
 
       // send a failure
       response_code = ARTNET_FIRMWARE_FAIL;
@@ -632,7 +632,7 @@ int handle_firmware(node n, artnet_packet p) {
 
       response_code = ARTNET_FIRMWARE_BLOCKGOOD;
     } else {
-      printf("cont, ips don't match or length has changed or out of range block num\n" );
+      ARTNET_PRINTF("cont, ips don't match or length has changed or out of range block num\n" );
 
       // in a transfer not from this ip
       response_code = ARTNET_FIRMWARE_FAIL;
@@ -676,19 +676,19 @@ int handle_firmware(node n, artnet_packet p) {
       reset_firmware_upload(n);
 
       response_code = ARTNET_FIRMWARE_ALLGOOD;
-      printf("Firmware upload complete\n");
+      ARTNET_PRINTF("Firmware upload complete\n");
 
     } else if (n->firmware.peer.s_addr != p->from.s_addr) {
       // in a transfer not from this ip
-      printf("last, ips don't match\n" );
+      ARTNET_PRINTF("last, ips don't match\n" );
       response_code = ARTNET_FIRMWARE_FAIL;
     } else if (length != n->firmware.bytes_total) {
       // they changed the length mid way thru a transfer
-      printf("last, lengths have changed %d %d\n", length, n->firmware.bytes_total);
+      ARTNET_PRINTF("last, lengths have changed %d %d\n", length, n->firmware.bytes_total);
       response_code = ARTNET_FIRMWARE_FAIL;
     } else if (block_id != total_blocks -1) {
       // the blocks don't match up
-      printf("This is the last block, but not according to the lengths %d %d\n", block_id, total_blocks -1);
+      ARTNET_PRINTF("This is the last block, but not according to the lengths %d %d\n", block_id, total_blocks -1);
       response_code = ARTNET_FIRMWARE_FAIL;
     }
   }
@@ -726,7 +726,7 @@ int handle_firmware_reply(node n, artnet_packet p) {
 
     } else {
       // random ALLGOOD received, don't let this abort the transfer
-      printf("FIRMWARE_ALLGOOD received before transfer completed\n");
+      ARTNET_PRINTF("FIRMWARE_ALLGOOD received before transfer completed\n");
     }
 
   } else if (p->data.firmwarer.type == ARTNET_FIRMWARE_FAIL) {
@@ -757,7 +757,7 @@ void handle_ipprog(node n, artnet_packet p) {
   if (check_callback(n, p, n->callbacks.ipprog))
     return;
 
-  printf("in ipprog\n");
+  ARTNET_PRINTF("in ipprog\n");
 }
 
 
@@ -791,33 +791,37 @@ int handle(node n, artnet_packet p) {
 #ifdef ARTNET_FEATURE_TOD
     case ARTNET_TODREQUEST:
       handle_tod_request(n, p);
+      ARTNET_PRINTF("TOD RQ\n");
       break;
     case ARTNET_TODDATA:
       handle_tod_data(n, p);
+      ARTNET_PRINTF("TOD DATA\n");
       break;
     case ARTNET_TODCONTROL:
       handle_tod_control(n, p);
+      ARTNET_PRINTF("TOD CTL\n");
       break;
 #endif
 #ifdef ARTNET_FEATURE_RDM
     case ARTNET_RDM:
       handle_rdm(n, p);
+      ARTNET_PRINTF("rdm\n");
       break;
 #endif
     case ARTNET_VIDEOSTEUP:
-      printf("vid setup\n");
+      ARTNET_PRINTF("vid setup\n");
       break;
     case ARTNET_VIDEOPALETTE:
-      printf("video palette\n");
+      ARTNET_PRINTF("video palette\n");
       break;
     case ARTNET_VIDEODATA:
-      printf("video data\n");
+      ARTNET_PRINTF("video data\n");
       break;
     case ARTNET_MACMASTER:
-      printf("mac master\n");
+      ARTNET_PRINTF("mac master\n");
       break;
     case ARTNET_MACSLAVE:
-      printf("mac slave\n");
+      ARTNET_PRINTF("mac slave\n");
       break;
 #ifdef ARTNET_FEATURE_FIRMWARE
     case ARTNET_FIRMWAREMASTER:
@@ -831,20 +835,20 @@ int handle(node n, artnet_packet p) {
       handle_ipprog(n, p);
       break;
     case ARTNET_IPREPLY:
-      printf("ip reply\n");
+      ARTNET_PRINTF("ip reply\n");
       break;
     case ARTNET_MEDIA:
-      printf("media \n");
+      ARTNET_PRINTF("media \n");
       break;
     case ARTNET_MEDIAPATCH:
-      printf("media patch\n");
+      ARTNET_PRINTF("media patch\n");
       break;
     case ARTNET_MEDIACONTROLREPLY:
-      printf("media control reply\n");
+      ARTNET_PRINTF("media control reply\n");
       break;
     default:
       n->state.report_code = ARTNET_RCPARSEFAIL;
-      printf("artnet but not yet implemented!, op was %x\n", (int) p->type);
+      ARTNET_PRINTF("artnet but not yet implemented!, op was %x\n", (int) p->type);
   }
   return 0;
 }

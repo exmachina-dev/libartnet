@@ -35,6 +35,10 @@
 #include "misc.h"
 #include "tod.h"
 
+#ifndef ARTNET_PRINTF
+#define ARTNET_PRINTF   USBport->printf
+#endif
+
 #ifndef ARTNET_PRIVATE_H
 #define ARTNET_PRIVATE_H
 

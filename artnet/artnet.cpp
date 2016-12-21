@@ -85,16 +85,16 @@ artnet_node artnet_new(const char *ip, const char *bcast, const char *gw, int ve
 
     n = (artnet_node_s *) malloc(sizeof(artnet_node_t));
 
-    USBport->printf("node_t: %d, %d\r\n", n, sizeof(artnet_node_t));
-    USBport->printf("socket_t: %d, %d\r\n", n, sizeof(artnet_socket_t));
-    USBport->printf("state_t: %d, %d\r\n", n, sizeof(node_state_t));
-    USBport->printf("callbacks_t: %d, %d\r\n", n, sizeof(node_callbacks_t));
-    USBport->printf("reply_t: %d, %d\r\n", n, sizeof(artnet_reply_t));
-    USBport->printf("list_t: %d, %d\r\n", n, sizeof(node_list_t));
+    ARTNET_PRINTF("node_t: %d, %d\r\n", n, sizeof(artnet_node_t));
+    ARTNET_PRINTF("socket_t: %d, %d\r\n", n, sizeof(artnet_socket_t));
+    ARTNET_PRINTF("state_t: %d, %d\r\n", n, sizeof(node_state_t));
+    ARTNET_PRINTF("callbacks_t: %d, %d\r\n", n, sizeof(node_callbacks_t));
+    ARTNET_PRINTF("reply_t: %d, %d\r\n", n, sizeof(artnet_reply_t));
+    ARTNET_PRINTF("list_t: %d, %d\r\n", n, sizeof(node_list_t));
 #ifdef ARTNET_FEATURE_FIRMWARE
-    USBport->printf("firmware_t: %d, %d\r\n", n, sizeof(firmware_transfer_t));
+    ARTNET_PRINTF("firmware_t: %d, %d\r\n", n, sizeof(firmware_transfer_t));
 #endif
-    USBport->printf("peering_t: %d, %d\r\n", n, sizeof(node_peering_t));
+    ARTNET_PRINTF("peering_t: %d, %d\r\n", n, sizeof(node_peering_t));
 
     if (!n) {
         artnet_error("malloc failure");
@@ -169,7 +169,7 @@ int artnet_start(artnet_node vn) {
     if (n->state.reply_addr.s_addr == 0) {
         n->state.reply_addr = n->state.bcast_addr;
     } else {
-        USBport->printf("%d\r\n", n->state.reply_addr);
+        ARTNET_PRINTF("%d\r\n", n->state.reply_addr);
     }
 
     // build the initial reply
@@ -188,7 +188,7 @@ int artnet_start(artnet_node vn) {
     } else {
         // send a reply on startup
         if (n->state.verbose)
-            USBport->printf("Sending POLL REPLY.\r\n");
+            ARTNET_PRINTF("Sending POLL REPLY.\r\n");
 
         if ((ret = artnet_tx_poll_reply(n, FALSE)))
             return ret;
@@ -1405,14 +1405,14 @@ int artnet_dump_config(artnet_node vn) {
     node n = (node) vn;
     check_nullnode(vn);
 
-    printf("#### NODE CONFIG ####\n");
-    printf("Node Type: %i\n", n->state.node_type);
-    printf("Short Name: %s\n", n->state.short_name);
-    printf("Long Name: %s\n", n->state.long_name);
-    printf("Subnet: %#02x\n", n->state.subnet);
-    printf("Default Subnet: %#02x\n", n->state.default_subnet);
-    printf("Net Ctl: %i\n", n->state.subnet_net_ctl);
-    printf("#####################\n");
+    ARTNET_PRINTF("#### NODE CONFIG ####\n");
+    ARTNET_PRINTF("Node Type: %i\n", n->state.node_type);
+    ARTNET_PRINTF("Short Name: %s\n", n->state.short_name);
+    ARTNET_PRINTF("Long Name: %s\n", n->state.long_name);
+    ARTNET_PRINTF("Subnet: %#02x\n", n->state.subnet);
+    ARTNET_PRINTF("Default Subnet: %#02x\n", n->state.default_subnet);
+    ARTNET_PRINTF("Net Ctl: %i\n", n->state.subnet_net_ctl);
+    ARTNET_PRINTF("#####################\n");
 
     return ARTNET_EOK;
 }
@@ -1675,7 +1675,7 @@ void check_timeouts(node n) {
     if (n->firmware.peer.s_addr != 0
             && (now - n->firmware.last_time >= FIRMWARE_TIMEOUT_SECONDS)) {
 
-        printf("firmware timeout\n");
+        ARTNET_PRINTF("firmware timeout\n");
         reset_firmware_upload(n);
 
         n->state.report_code = ARTNET_RCFIRMWAREFAIL;
