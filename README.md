@@ -50,6 +50,7 @@ To enable it create a config.h file with those constants defined:
 
 # Links
 
+For an example program, see [ArtNetMbed](https://github.com/exmachina-dev/ArtNetMbed)
 Code repository: [libartnet](https://github.com/exmachina-dev/libartnet)
 
 Forked from [OpenLightingProject/libartnet](https://github.com/OpenLightingProject/libartnet)
