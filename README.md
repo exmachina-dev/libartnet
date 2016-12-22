@@ -51,5 +51,8 @@ To enable it create a config.h file with those constants defined:
 # Links
 
 Code repository: [libartnet](https://github.com/exmachina-dev/libartnet)
-Forked from [libartnet](https://github.com/OpenLightingProject/libartnet)
+
+Forked from [OpenLightingProject/libartnet](https://github.com/OpenLightingProject/libartnet)
+
+See [authors file](AUTHORS) for contributors.
 
