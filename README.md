@@ -6,6 +6,11 @@ transmission of DMX and related data over IP networks.
 
 This is a port of libartnet on mbed platform. For the original version, see (libartnet)[https://github.com/OpenLightingProject/libartnet]
 
+# Requirements
+
+For this lib to work, you need broadcast features in socket. This feature is not yet merged so you need to use the our [mbed-os](https://github.com/exmachina-dev/mbed-os) repository.
+
+
 # Installation
 
 With mbed-cli, clone the repository into the `lib/` directory or use submodules:
