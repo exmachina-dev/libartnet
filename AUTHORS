@@ -1,12 +1,12 @@
 
-Author:
+# Author:
 
  Simon Newton <nomis52@westnet.com.au>
 
-Bug Reports & Patches:
+# Bug Reports & Patches:
 
  Samuli Valo
  Justin Cormack
  nico <sl1200mk2@gmail.com> (Win32 port)
  Massimo Callegari
- Benoit Rapidel <benoit.rapidel.exmachina.fr> (Mbed port)
+ Benoit Rapidel <benoit.rapidel+devs@exmachina.fr> (Mbed port)
